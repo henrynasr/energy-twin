@@ -8,7 +8,7 @@ def load_data(csv_path):
     df.set_index("time", inplace=True)
     return df
 
-def style_axes(ax, title, xlabel, ylabel):
+def style_axes(ax, title="", xlabel="", ylabel=""):
     ax.set_title(title, fontsize=16)
     ax.set_xlabel(xlabel, fontsize=14)
     ax.set_ylabel(ylabel, fontsize=14)
