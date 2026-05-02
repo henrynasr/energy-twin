@@ -7,6 +7,12 @@ import numpy as np
 import pandas as pd
 
 
+# Default occupancy parameters. Overridable per call to build_Q_array,
+# also used as Sobol sweep baseline.
+PEOPLE_PEAK = 400          # peak headcount in the studied corridor
+WATTS_PER_PERSON = 100     # sensible heat per occupant (W)
+BASELINE_W = 10_000        # lighting + equipment baseline (W)
+
 
 def load_profiles(path):
     """
@@ -28,13 +34,8 @@ def load_profiles(path):
         "WKD":  df["WKD"].to_numpy(),
     }
 
-PEOPLE_PEAK = 400
-WATTS_PER_PERSON = 100
-BASELINE_W = 10_000
 
-
-def build_Q_array(t_array, dates, profiles,
-                  people_peak=PEOPLE_PEAK,
+def build_Q_array(dates, profiles, people_peak=PEOPLE_PEAK,
                   watts_per_person=WATTS_PER_PERSON,
                   baseline_w=BASELINE_W):
     """
@@ -42,9 +43,7 @@ def build_Q_array(t_array, dates, profiles,
 
     Parameters
     ----------
-    t_array : np.ndarray
-        Time grid in seconds. Unused (Q is hourly), kept for API symmetry.
-    dates : pd.DatetimeIndex
+     dates : pd.DatetimeIndex
         One timestamp per element of t_array.
     profiles : dict
         Output of load_profiles().
@@ -54,9 +53,6 @@ def build_Q_array(t_array, dates, profiles,
     Q_array : np.ndarray  (W)
     n_people : np.ndarray  (persons)
     """
-    if len(t_array) != len(dates):
-        raise ValueError(f"length mismatch: {len(t_array)} vs {len(dates)}")
-
     n_people = np.empty(len(dates))
     for i, ts in enumerate(dates):
         profile = profiles["WKD"] if ts.weekday() >= 5 else profiles["JOVS"]
@@ -65,15 +61,17 @@ def build_Q_array(t_array, dates, profiles,
     Q_array = n_people * watts_per_person + baseline_w
     return Q_array, n_people
 
+
 if __name__ == "__main__":
+    # Smoke test: load profiles, build a week of Q and n, print stats.
+
     p = load_profiles("data/raw/Defense_Occupation_Normalised.xlsx")
     for k, v in p.items():
         print(f"{k}: peak={v.max():.3f} at hour {v.argmax()}, mean={v.mean():.3f}")
 
-    # Sanity: 1 week starting Mon 2024-07-01
+    # Test window: 1 week starting Mon 2024-07-01 (matches thermal_model.py).
     dates = pd.date_range("2024-07-01", periods=168, freq="h")
-    t_array = np.arange(168) * 3600
-    Q, n = build_Q_array(t_array, dates, p)
+    Q, n = build_Q_array(dates, p)
 
     print(f"\nWeek 2024-07-01 to 2024-07-07:")
     print(f"  Q range : {Q.min():.0f} W  →  {Q.max():.0f} W")

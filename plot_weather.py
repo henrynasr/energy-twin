@@ -106,9 +106,12 @@ def plot_temp_humidity(df, output_path):
     plt.close()
 
 # Main block — runs everything
+
 df = load_data("data/raw/paris_weather.csv")
+
 monthly_avg = compute_monthly_avg(df)
 yearly_avg = compute_yearly_avg(df)
+
 plot_monthly_trend(monthly_avg, "images/paris_monthly_temp.png")
 plot_yearly_cycle(monthly_avg, "images/paris_yearly_cycle.png")
 plot_daily_cycle(df, "images/paris_hourly_temperature.png")
