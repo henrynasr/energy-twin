@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 
+
 def load_profiles(path):
     """
     Read the normalised occupancy Excel and return hourly profiles.
