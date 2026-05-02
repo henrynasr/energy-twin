@@ -4,7 +4,7 @@ HVAC sensitivity & optimization toolkit for metro stations. Public data only.
 
 ## What this is
 
-Early-stage data foundation. Currently: weather data pipeline, exploratory analysis on 30 years of Paris hourly weather, and a thermal model layer driven by that weather and by real RATP occupancy data. The longer-term goal is a Python toolkit for HVAC sensitivity analysis and regulation optimization on metro stations, using only public data sources (Open-Meteo, Météo-France, IDFM, RATP, RTE, ADEME).
+Early-stage data foundation. Currently: weather data pipeline, exploratory analysis on 30 years of Paris hourly weather, a thermal model layer driven by that weather and by real RATP occupancy data, and a first 2D sensitivity sweep on envelope and load parameters. The longer-term goal is a Python toolkit for HVAC sensitivity analysis and regulation optimization on metro stations, using only public data sources (Open-Meteo, Météo-France, IDFM, RATP, RTE, ADEME).
 
 ## Findings
 
@@ -65,6 +65,22 @@ The three behaviors from the synthetic version still hold:
 
 Compared to the synthetic version, peak T_in is ~5 °C higher (50 kW vs 20 kW peak Q). Parameters (UA, C) remain order-of-magnitude estimates, **not calibrated**.
 
+### Sensitivity sweep — UA × watts per person
+![Sensitivity sweep heatmap](images/sweep_heatmap.png)
+
+400 thermal model runs over the same week of July 2024, sweeping two parameters:
+- **UA** (envelope conductance) from 3000 to 7000 W/K — ±40% around the baseline of 5000 W/K.
+- **Watts per person** from 70 to 120 W — covering seated to active occupancy.
+
+Each pixel is one full simulation; the color is the peak T_in reached during the week.
+
+Findings:
+- Peak T_in ranges from ~28 °C (high UA, low w/p — leaky envelope, light load) to ~35 °C (low UA, high w/p — sealed envelope, heavy load). A ~7 °C spread across realistic parameter ranges.
+- The gradient is **diagonal**, not horizontal or vertical. Neither parameter dominates the other on this window — both contribute comparably to the peak temperature response. If one dominated, the heatmap would show horizontal or vertical bands.
+- Under the operational case (w/p = 100, UA = 5000), peak T_in lands around 31 °C — consistent with a buried, unventilated station in summer. The model's ~30 °C July peak is physically plausible without active cooling.
+
+This visual sweep is a precursor to a proper Sobol sensitivity analysis (next session), which will quantify the first-order and total-order indices for UA, w/p, and other parameters across the full HVAC system.
+
 ## Data
 
 - **Open-Meteo Historical Weather API** (ERA5 reanalysis), 30 years of Paris hourly weather (1996–2025). Variables: 2 m temperature, 2 m relative humidity. Raw CSV not committed (`.gitignore`).
@@ -75,8 +91,10 @@ Compared to the synthetic version, peak T_in is ~5 °C higher (50 kW vs 20 kW pe
 - `fetch_weather.py` — pulls 30 years of hourly Paris weather from the Open-Meteo API, saves to `data/raw/paris_weather.csv`.
 - `inspect_weather.py` — loads the CSV, prints shape, dtypes, summary stats, missing values.
 - `plot_weather.py` — generates the 5 weather plots into `images/`.
-- `occupancy.py` — reads the RATP normalised profiles, builds `(Q_array, n_people)` from a datetime index. Used by `thermal_model.py`.
-- `thermal_model.py` — lumped-capacitance ODE driven by the weather CSV and `occupancy.py`, plot saved to `images/thermal_model.png`.
+- `occupancy.py` — reads the RATP normalised profiles, builds `(Q_array, n_people)` from a datetime index. Used by `thermal_model.py` and `sweep.py`.
+- `utils.py` — shared functions: `load_data`, `dT_dt` (thermal ODE slope), `style_axes` (matplotlib styling helper).
+- `thermal_model.py` — single-run lumped-capacitance ODE driven by the weather CSV and `occupancy.py`. Three-panel plot saved to `images/thermal_model.png`.
+- `sweep.py` — 20×20 sensitivity sweep on (UA, watts_per_person), heatmap saved to `images/sweep_heatmap.png`.
 
 ## Setup
 
@@ -90,8 +108,9 @@ python fetch_weather.py         # run this first — pulls the data
 python inspect_weather.py
 python plot_weather.py
 python thermal_model.py
+python sweep.py
 ```
 
 ## Status
 
-Week 1 — local environment, data pipeline, weather plots, thermal model first with synthetic occupancy then upgraded to real RATP occupancy profiles. Next: first sensitivity sweep on (UA, C, Q_baseline) to identify the dominant levers on peak T_in.
+Week 1 — local environment, data pipeline, weather plots, thermal model with real RATP occupancy profiles, and first 2D sensitivity sweep. Next: proper Sobol sensitivity analysis (SALib) on UA, w/p, C, baseline load.
